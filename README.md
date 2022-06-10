@@ -38,12 +38,12 @@ Installation is only available via composer
 "repositories": [
     {
         "type": "vcs",
-        "url": "https://github.com/383Project/nova-google2fa"
+        "url": "https://github.com/sanderbaas/nova-google2fa"
     }
 ]
 
 "require": {
-    "383project/nova-google2fa": "dev-master"
+    "sanderbaas/nova-google2fa": "dev-master"
 }
 ```
 
