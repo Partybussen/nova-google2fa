@@ -50,4 +50,9 @@ return [
          */
         'hashing_algorithm' => PASSWORD_BCRYPT,
     ],
+
+    /**
+     * Optional field on the User model that indicates if 2fa is required for the user. The field should be a boolean.
+     */
+    'requires_2fa_attribute' => null,
 ];

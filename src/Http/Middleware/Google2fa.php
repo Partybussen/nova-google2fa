@@ -30,6 +30,12 @@ class Google2fa
             || $request->path() === '2fa/register') {
             return $next($request);
         }
+
+        if (config('383project2fa.requires_2fa_attribute') &&
+                !auth()->user()->{config('383project2fa.requires_2fa_attribute')}) {
+            return $next($request);
+        }
+
         $authenticator = app(Google2FAAuthenticator::class)->boot($request);
         if (auth()->guest() || $authenticator->isAuthenticated()) {
             return $next($request);
