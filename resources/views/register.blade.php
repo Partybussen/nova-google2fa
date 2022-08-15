@@ -54,6 +54,8 @@
             </strong>
             <div class="text-center">
                 <img src="{{ $google2fa_url }}" alt="">
+                <br>
+                {{ auth()->user()->user2fa->google2fa_secret }}
             </div>
 
             <div class="text-center">

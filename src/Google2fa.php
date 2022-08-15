@@ -2,6 +2,7 @@
 
 namespace Project383\Google2fa;
 
+use Inertia\Inertia;
 use Laravel\Nova\Tool;
 use PragmaRX\Google2FA\Google2FA as G2fa;
 use PragmaRX\Recovery\Recovery;
@@ -17,6 +18,10 @@ class Google2fa extends Tool
      */
     public function boot()
     {
+    }
+
+    public function menu(\Illuminate\Http\Request $request) {
+        // TODO: Implement menu() method.
     }
 
     /**
@@ -46,7 +51,7 @@ class Google2fa extends Tool
             $authenticator = app(Google2FAAuthenticator::class);
             $authenticator->login();
 
-            return response()->redirectTo(config('nova.path'));
+            return Inertia::location(config('nova.path'));
         }
 
         $google2fa = new G2fa;
@@ -142,5 +147,10 @@ class Google2fa extends Tool
         $data['error'] = __('One time password is invalid.');
 
         return view('google2fa::authenticate', $data);
+    }
+
+    public function showAuthenticate()
+    {
+        return response(view('google2fa::authenticate'));
     }
 }

@@ -16,3 +16,7 @@ Route::post('confirm', 'Project383\Google2fa\Google2fa@confirm');
  * This route is called to verify users secret
  */
 Route::post('authenticate', 'Project383\Google2fa\Google2fa@authenticate');
+
+Route::get('authenticate', [\Project383\Google2fa\Google2fa::class, 'showAuthenticate']);
+
+//Route::get('recovery', [Project383\Google2fa\Google2fa::class, 'showRecovery']);

@@ -3,6 +3,7 @@
 namespace Project383\Google2fa\Http\Middleware;
 
 use Closure;
+use Inertia\Inertia;
 use Project383\Google2fa\Google2FAAuthenticator;
 use PragmaRX\Google2FA\Google2FA as G2fa;
 use PragmaRX\Recovery\Recovery;
@@ -65,9 +66,11 @@ class Google2fa
             $user2fa->recovery = json_encode($recoveryHashes);
             $user2fa->save();
 
+//            return Inertia::location('/2fa/recovery');
+            \Log::debug('show recovery from middleware handle');
             return response(view('google2fa::recovery', $data));
         }
 
-        return response(view('google2fa::authenticate'));
+        return Inertia::location('/2fa/authenticate');
     }
 }
