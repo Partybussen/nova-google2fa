@@ -52,10 +52,39 @@
                     <li>Verify the OTP from Google Authenticator Mobile App</li>
                 </ol>
             </strong>
+
+            <h2 class="p-2">Recovery codes</h2>
+            @csrf
+            <p class="p-2">
+                Recovery codes are used to access your account in the event you cannot recive two-factor
+                authentication codes.
+            </p>
+            <p class="p-2 no-print">
+                <strong>
+                    Download, print or copy your codes before continuing two-factor authentication setup.
+                </strong>
+            </p>
+            <div class="p-3">
+                <label class="block font-bold mb-2" for="co">Recovery codes
+                    <button class="no-print m-1  btn btn-default btn-primary hover:bg-primary-dark" type="button"
+                            onclick="window.print();return false;">
+                        Print
+                    </button>
+                </label>
+
+                <div>
+                    @foreach ($recoveryCodes as $recoveryCode)
+                        <ul>
+                            <li class="p-2">{{ $recoveryCode }}</li>
+                        </ul>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="text-center">
                 <img src="{{ $google2fa_url }}" alt="">
                 <br>
-                {{ auth()->user()->user2fa->google2fa_secret }}
+                {{ $secretKey }}
             </div>
 
             <div class="text-center">

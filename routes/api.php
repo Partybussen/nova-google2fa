@@ -2,21 +2,18 @@
 
 use Illuminate\Support\Facades\Route;
 
-/**
- * This route is called when user must first time confirm secret
- */
-Route::post('register', 'Project383\Google2fa\Google2fa@register');
+Route::group(['middleware' => config('nova.api_middleware')], function() {
+    Route::post('register', [Project383\Google2fa\Google2fa::class, 'register']);
 
-/**
- * This route is called when user must first time confirm secret
- */
-Route::post('confirm', 'Project383\Google2fa\Google2fa@confirm');
+    Route::post('confirm', [Project383\Google2fa\Google2fa::class, 'confirmRegistration']);
 
-/**
- * This route is called to verify users secret
- */
-Route::post('authenticate', 'Project383\Google2fa\Google2fa@authenticate');
+    Route::post('authenticate', [Project383\Google2fa\Google2fa::class, 'authenticate']);
 
-Route::get('authenticate', [\Project383\Google2fa\Google2fa::class, 'showAuthenticate']);
+    Route::post('recover', [Project383\Google2fa\Google2fa::class, 'checkRecovery']);
 
-//Route::get('recovery', [Project383\Google2fa\Google2fa::class, 'showRecovery']);
+    Route::get('authenticate', [\Project383\Google2fa\Google2fa::class, 'showAuthenticate']);
+
+    Route::get('recover', [\Project383\Google2fa\Google2fa::class, 'showRecovery']);
+
+    Route::get('register', [Project383\Google2fa\Google2fa::class, 'showRegister']);
+});

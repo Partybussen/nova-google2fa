@@ -27,50 +27,54 @@ class Google2fa
         if (!config('383project2fa.enabled')) {
             return $next($request);
         }
-        if ($request->path() === '2fa/confirm' || $request->path() === '2fa/authenticate'
-            || $request->path() === '2fa/register') {
-            return $next($request);
-        }
 
+        // continue when user is not required to have 2fa
         if (config('383project2fa.requires_2fa_attribute') &&
-                !auth()->user()->{config('383project2fa.requires_2fa_attribute')}) {
+            !auth()->user()->{config('383project2fa.requires_2fa_attribute')}) {
             return $next($request);
         }
 
         $authenticator = app(Google2FAAuthenticator::class)->boot($request);
-        if (auth()->guest() || $authenticator->isAuthenticated()) {
+
+        $user2faEnabled = auth()->user()->user2fa && auth()->user()->user2fa->google2fa_enable;
+        $user2faAuthenticated = $authenticator->isAuthenticated() && $user2faEnabled;
+
+        $paths2fa = [
+            '2fa/recover',
+            '2fa/confirm',
+            '2fa/authenticate',
+            '2fa/register'
+        ];
+
+        $pathsUnregisteredOnly = [
+            '2fa/register',
+            '2fa/confirm'
+        ];
+
+        if ($user2faAuthenticated && in_array($request->path(), $paths2fa)) {
+            return Inertia::location(config('nova.path'));
+        }
+
+        // redirect user with registered 2fa to authenticate page
+        if ($user2faEnabled && in_array($request->path(), $pathsUnregisteredOnly)) {
+            return Inertia::location('/2fa/authenticate');
+        }
+
+        // redirect user to register 2fa when it should have 2fa, but doesn't
+        if (!$user2faEnabled && !in_array($request->path(), $pathsUnregisteredOnly)) {
+            return Inertia::location('/2fa/register');
+        }
+
+        // allow 2fa management urls
+        if (in_array($request->path(), $paths2fa)) {
             return $next($request);
         }
-        if (empty(auth()->user()->user2fa) || auth()->user()->user2fa->google2fa_enable === 0) {
 
-            $google2fa = new G2fa();
-            $recovery = new Recovery();
-            $secretKey = $google2fa->generateSecretKey();
-            $data['recovery'] = $recovery
-                ->setCount(config('383project2fa.recovery_codes.count'))
-                ->setBlocks(config('383project2fa.recovery_codes.blocks'))
-                ->setChars(config('383project2fa.recovery_codes.chars_in_block'))
-                ->toArray();
-
-            $recoveryHashes = $data['recovery'];
-            array_walk($recoveryHashes, function (&$value) {
-                $value = password_hash($value, config('383project2fa.recovery_codes.hashing_algorithm'));
-            });
-
-            $user2faModel = config('383project2fa.models.user2fa');
-            $user2faModel::where('user_id', auth()->user()->id)->delete();
-
-            $user2fa = new $user2faModel();
-            $user2fa->user_id = auth()->user()->id;
-            $user2fa->google2fa_secret = $secretKey;
-            $user2fa->recovery = json_encode($recoveryHashes);
-            $user2fa->save();
-
-//            return Inertia::location('/2fa/recovery');
-            \Log::debug('show recovery from middleware handle');
-            return response(view('google2fa::recovery', $data));
+        if (auth()->guest() || $user2faAuthenticated) {
+            return $next($request);
         }
 
+        // redirect user to authentication of 2fa code
         return Inertia::location('/2fa/authenticate');
     }
 }

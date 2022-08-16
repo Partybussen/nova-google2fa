@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full font-sans">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -20,15 +21,16 @@
         .rounded-lg {
             border-radius: 0 !important;
         }
-        @media print
-        {
-            .no-print, .no-print *
-            {
-                display: none !important;
+    </style>
+    <script>
+        function checkAutoSubmit(el) {
+            if (el.value.length === 6) {
+                document.getElementById('authenticate_form').submit();
             }
         }
-    </style>
+    </script>
 </head>
+
 <body class="bg-40 text-black h-full">
 <div class="h-full">
     <div class="px-view py-view mx-auto">
@@ -36,40 +38,33 @@
             @include('nova::partials.logo')
         </div>
 
-        <form class="bg-white shadow rounded-lg p-8 max-w-xl mx-auto" method="POST" action="/2fa/register">
-            <h2 class="p-2">Recovery codes</h2>
+        <form id="authenticate_form" class="bg-white shadow rounded-lg p-8 max-w-xl mx-auto" method="POST" action="/2fa/authenticate">
             @csrf
-            <p class="p-2">
-                Recovery codes are used to access your account in the event you cannot recive two-factor
-                authentication codes.
-            </p>
-            <p class="p-2 no-print">
-                <strong>
-                    Download, print or copy your codes before continuing two-factor authentication setup.
-                </strong>
-            </p>
-            <div class="p-3">
-                <label class="block font-bold mb-2" for="co">Recovery codes
-                    <button class="no-print m-1  btn btn-default btn-primary hover:bg-primary-dark" type="button"
-                            onclick="window.print();return false;">
-                        Print
-                    </button>
-                </label>
+            <h2 class="p-2">Recovery</h2>
 
-                <div>
-                    @foreach ($recovery as $recoveryCode)
-                        <ul>
-                            <li class="p-2">{{ $recoveryCode }}</li>
-                        </ul>
-                    @endforeach
+            <p class="p-2"><strong>Enter one of your recovery codes. If you don't have any, please contact the system administrator.</strong></p>
+
+            <div class="text-center pt-3">
+                <div class="mb-6 w-1/2" style="display:inline-block">
+                    <div>
+                        <label class="block font-bold mb-2" for="co">Recovery code</label>
+                        <input class="form-control form-input form-input-bordered w-full" id="recover" type="text" name="recover" value="" autofocus="">
+                    </div>
+                    @if (isset($error))
+                        <p id="error_text" class="text-center font-semibold text-danger my-3">
+                            {{ $error }}
+                        </p>
+                    @endif
                 </div>
+                <button class="w-1/2 btn btn-default btn-primary hover:bg-primary-dark" type="submit">
+                    Check
+                </button>
+                <br>
+                <a href="{{ $authenticationUrl }}">Try again with a One Time Password</a>
             </div>
-
-            <button class="no-print m-2 w-1/2 btn btn-default btn-primary hover:bg-primary-dark" type="submit">
-                Continue
-            </button>
         </form>
     </div>
 </div>
 </body>
+
 </html>

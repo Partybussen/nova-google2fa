@@ -21,13 +21,9 @@ class Google2fa extends Tool
     }
 
     public function menu(\Illuminate\Http\Request $request) {
-        // TODO: Implement menu() method.
     }
 
-    /**
-     * @return bool
-     */
-    protected function is2FAValid()
+    private function is2FAValid(): bool
     {
         $secret = Request::get('secret');
         if (empty($secret)) {
@@ -39,58 +35,7 @@ class Google2fa extends Tool
         return $google2fa->verifyKey(auth()->user()->user2fa->google2fa_secret, $secret);
     }
 
-    /**
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\Http\RedirectResponse|\Illuminate\View\View
-     * @throws \PragmaRX\Google2FA\Exceptions\InsecureCallException
-     */
-    public function confirm()
-    {
-        if ($this->is2FAValid()) {
-            auth()->user()->user2fa->google2fa_enable = 1;
-            auth()->user()->user2fa->save();
-            $authenticator = app(Google2FAAuthenticator::class);
-            $authenticator->login();
-
-            return Inertia::location(config('nova.path'));
-        }
-
-        $google2fa = new G2fa;
-
-        $google2fa_url = Url::generateGoogleQRCodeUrl(
-            'https://chart.googleapis.com/',
-            'chart',
-            'chs=200x200&chld=M|0&cht=qr&chl=',
-            $google2fa->getQRCodeUrl(config('app.name'), auth()->user()->email, auth()->user()->user2fa->google2fa_secret)
-        );
-
-        $data['google2fa_url'] = $google2fa_url;
-        $data['error'] = __('Secret is invalid.');
-
-        return view('google2fa::register', $data);
-    }
-
-    /**
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
-     * @throws \PragmaRX\Google2FA\Exceptions\InsecureCallException
-     */
-    public function register()
-    {
-        $google2fa = new G2fa;
-
-        $google2fa_url = Url::generateGoogleQRCodeUrl(
-            'https://chart.googleapis.com/',
-            'chart',
-            'chs=200x200&chld=M|0&cht=qr&chl=',
-            $google2fa->getQRCodeUrl(config('app.name'), auth()->user()->email, auth()->user()->user2fa->google2fa_secret)
-        );
-
-        $data['google2fa_url'] = $google2fa_url;
-
-        return view('google2fa::register', $data);
-
-    }
-
-    private function isRecoveryValid($recover, $recoveryHashes)
+    private function isRecoveryValid($recover, $recoveryHashes): bool
     {
         foreach ($recoveryHashes as $recoveryHash) {
             if (password_verify($recover, $recoveryHash)) {
@@ -102,55 +47,131 @@ class Google2fa extends Tool
     }
 
     /**
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     * @throws \PragmaRX\Google2FA\Exceptions\InsecureCallException
+     */
+    public function confirmRegistration() {
+        if ($this->is2FAValid()) {
+            auth()->user()->user2fa->google2fa_enable = 1;
+            auth()->user()->user2fa->save();
+            $authenticator = app(Google2FAAuthenticator::class);
+            $authenticator->login();
+
+            return Inertia::location(config('nova.path'));
+        }
+
+        return Inertia::location('/2fa/register');
+    }
+
+    /**
      * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Contracts\View\Factory|\Illuminate\Http\RedirectResponse|\Illuminate\Http\Response|\Illuminate\View\View
      */
-    public function authenticate()
+    public function authenticate(\Illuminate\Http\Request $request)
     {
-        if ($recover = Request::get('recover')) {
-            if ($this->isRecoveryValid($recover, json_decode(auth()->user()->user2fa->recovery, true)) === false) {
-                $data['error'] = __('Recovery key is invalid.');
+        $data = [];
 
-                return view('google2fa::authenticate', $data);
-            }
+        if ($this->is2FAValid()) {
+            $authenticator = app(Google2FAAuthenticator::class);
+            $authenticator->login();
 
-            $google2fa = new G2fa();
-            $recovery = new Recovery();
+            return Inertia::location(config('nova.path'));
+        }
+
+        $data['error'] = __('One time password is invalid.');
+        $data['recoveryUrl'] = '/2fa/recover';
+
+        return view('google2fa::authenticate', $data);
+    }
+
+    private function checkRecovery(\Illuminate\Http\Request $request)
+    {
+        $data = [];
+
+        $recover = Request::get('recover');
+
+        if ($this->isRecoveryValid($recover, json_decode(auth()->user()->user2fa->recovery, true))) {
+            // delete 2fa settings for this user
+            $user2faModel::where('user_id', auth()->user()->id)->delete();
+
+            // redirect to register page
+            return Inertia::location('/2fa/register');
+        }
+
+        $data['error'] = __('Recovery code is invalid.');
+
+        return view('google2fa::recover', $data);
+    }
+
+    public function showAuthenticate(\Illuminate\Http\Request $request)
+    {
+        $data = [
+            'recoveryUrl' => '/2fa/recover'
+        ];
+
+        return response(view('google2fa::authenticate', $data));
+    }
+
+    public function showRecovery()
+    {
+        $data = [
+            'authenticationUrl' => '/2fa/authenticate'
+        ];
+
+        return response(view('google2fa::recovery', $data));
+    }
+
+    public function showRegister(\Illuminate\Http\Request $request)
+    {
+        $google2fa = new G2fa();
+        $recovery = new Recovery();
+
+        $data = $request->session()->get('recovery_data');
+
+        if (!$data) {
             $secretKey = $google2fa->generateSecretKey();
-            $data['recovery'] = $recovery
+
+            $recoveryCodes = $recovery
                 ->setCount(config('383project2fa.recovery_codes.count'))
                 ->setBlocks(config('383project2fa.recovery_codes.blocks'))
                 ->setChars(config('383project2fa.recovery_codes.chars_in_block'))
                 ->toArray();
 
-            $recoveryHashes = $data['recovery'];
+            $data = [
+                'recoveryCodes' => $recoveryCodes,
+                'secretKey' => $secretKey
+            ];
+
+            $request->session()->put('recovery_data', $data);
+
+            $recoveryHashes = $recoveryCodes;
+
             array_walk($recoveryHashes, function (&$value) {
                 $value = password_hash($value, config('383project2fa.recovery_codes.hashing_algorithm'));
             });
 
             $user2faModel = config('383project2fa.models.user2fa');
-
             $user2faModel::where('user_id', auth()->user()->id)->delete();
+
             $user2fa = new $user2faModel();
             $user2fa->user_id = auth()->user()->id;
             $user2fa->google2fa_secret = $secretKey;
             $user2fa->recovery = json_encode($recoveryHashes);
             $user2fa->save();
-
-            return response(view('google2fa::recovery', $data));
         }
-        if ($this->is2FAValid()) {
-            $authenticator = app(Google2FAAuthenticator::class);
-            $authenticator->login();
 
-            return response()->redirectTo(config('nova.path'));
-        }
-        $data['error'] = __('One time password is invalid.');
+        $google2fa_url = Url::generateGoogleQRCodeUrl(
+            'https://chart.googleapis.com/',
+            'chart',
+            'chs=200x200&chld=M|0&cht=qr&chl=',
+            $google2fa->getQRCodeUrl(
+                config('app.name'),
+                auth()->user()->email,
+                $data['secretKey']
+            )
+        );
 
-        return view('google2fa::authenticate', $data);
-    }
+        $data['google2fa_url'] = $google2fa_url;
 
-    public function showAuthenticate()
-    {
-        return response(view('google2fa::authenticate'));
+        return response(view('google2fa::register', $data));
     }
 }
